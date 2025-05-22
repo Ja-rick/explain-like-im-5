@@ -203,10 +203,14 @@ if st.button("✨ Explain it!"):
         st.markdown(f"<div class='explanation-box'>{safe_html}</div>", unsafe_allow_html=True)
 
         # Log to Google Sheets
-        sheet.append_row([
-            datetime.now().isoformat(),
-            EXPLANATION_LEVELS[level][0],
-            text_input
-        ])
+        try:
+            sheet.append_row([
+                datetime.now().isoformat(),
+                EXPLANATION_LEVELS[level][0],
+                text_input,
+                result
+            ])
+        except Exception as e:
+            st.error(f"Logging to Google Sheets failed: {e}")
     else:
         st.warning("Paste something in first, my guy.")
