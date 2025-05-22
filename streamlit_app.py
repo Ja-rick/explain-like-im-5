@@ -7,11 +7,12 @@ import gspread
 
 # --- CONFIG ---
 st.set_page_config(page_title="Explain Like I'm 5", layout="wide")
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-sheet = None  # default value in case Google Sheets auth fails
 
+# --- OPENAI SETUP ---
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 # --- GOOGLE SHEETS AUTH ---
+sheet = None
 try:
     scope = [
         "https://www.googleapis.com/auth/spreadsheets",
@@ -22,12 +23,9 @@ try:
         scopes=scope
     )
     gc = gspread.authorize(creds)
-    sheet = gc.open("ExplainLikeIm5_Logs").sheet1
+    sheet = gc.open("ExplainLikeIm5_Logs").sheet1  # or use .worksheet("SheetName") if renamed
 except Exception as e:
-    if hasattr(e, 'response') and hasattr(e.response, 'status_code'):
-        st.warning(f"⚠️ Logging may have partially failed. Status: {e.response.status_code}")
-    else:
-        st.warning(f"⚠️ Logging to Google Sheets failed: {e}")
+    st.warning(f"⚠️ Logging to Google Sheets failed: {e}")
 
 # --- STYLES ---
 st.markdown("""
@@ -42,14 +40,12 @@ st.markdown("""
         background-size: cover;
         background-repeat: no-repeat;
         background-position: center;
-        transition: background-color 0.3s ease;
     }
     .header-logo {
         font-size: 6em;
         font-weight: 900;
         color: white;
         margin: 20px 0 10px 10px;
-        transition: all 0.3s ease-in-out;
     }
     .explanation-box {
         background-color: rgba(0, 0, 0, 0.6);
@@ -63,71 +59,6 @@ st.markdown("""
         white-space: pre-wrap;
         word-wrap: break-word;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-        transition: box-shadow 0.3s ease;
-    }
-    .tooltip-legend {
-        display: flex;
-        justify-content: space-between;
-        margin-top: -10px;
-        margin-bottom: 30px;
-        color: white;
-    }
-    .tooltip-legend span {
-        position: relative;
-        font-size: 0.95em;
-        cursor: help;
-        transition: color 0.3s ease;
-    }
-    .tooltip-legend span:hover {
-        color: #ffd700;
-    }
-    .tooltip-legend span::after {
-        content: attr(data-tooltip);
-        position: absolute;
-        bottom: 120%;
-        left: 50%;
-        transform: translateX(-50%);
-        background-color: #0077b6;
-        color: #fff;
-        padding: 6px 10px;
-        border-radius: 6px;
-        font-size: 0.75em;
-        white-space: nowrap;
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 0.3s ease;
-        z-index: 999;
-    }
-    .tooltip-legend span:hover::after {
-        opacity: 1;
-    }
-    button[kind="primary"], .stButton > button {
-        transition: all 0.3s ease-in-out;
-        border: none;
-        box-shadow: 0 0 0px transparent;
-        font-weight: bold;
-    }
-    button[kind="primary"]:hover, .stButton > button:hover {
-        box-shadow: 0 0 12px #ffb3ec, 0 0 20px #c6e2ff;
-        transform: scale(1.03);
-    }
-    .typing {
-        font-size: 1.2em;
-        color: white;
-        font-family: monospace;
-        overflow: hidden;
-        border-right: .1em solid white;
-        white-space: nowrap;
-        margin: 0 auto;
-        animation: typing 1.5s steps(20, end), blink-caret 0.8s step-end infinite;
-    }
-    @keyframes typing {
-        from { width: 0 }
-        to { width: 100% }
-    }
-    @keyframes blink-caret {
-        from, to { border-color: transparent }
-        50% { border-color: white; }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -168,6 +99,7 @@ EXAMPLES = [
 if st.button("🎲 Load Example Text"):
     st.session_state.example = random.choice(EXAMPLES)
     st.rerun()
+
 text_input = st.text_area("Paste your complicated text here:", value=st.session_state.get("example", ""), height=200)
 
 # --- EXPLAIN FUNCTION ---
@@ -193,14 +125,27 @@ if st.button("✨ Explain it!"):
         safe_html = result.replace('\n', '<br>')
         st.markdown(f"<div class='explanation-box'>{safe_html}</div>", unsafe_allow_html=True)
 
+        log_row = [
+            datetime.now().isoformat(),
+            EXPLANATION_LEVELS[level][0],
+            text_input
+        ]
+        st.write("🔍 Attempting to log:", log_row)
+
         if sheet:
             try:
-                sheet.append_row([
-                    datetime.now().isoformat(),
-                    EXPLANATION_LEVELS[level][0],
-                    text_input
-                ])
+                sheet.append_row(log_row)
+                st.success("✅ Logged to Google Sheets!")
             except Exception as e:
                 st.warning(f"⚠️ Failed to log result: {e}")
     else:
         st.warning("Paste something in first, my guy.")
+
+# --- TEST BUTTON FOR LOGGING ---
+if st.button("🧪 Test Logging"):
+    try:
+        test_row = ["Test Time", "Test Level", "Test Input"]
+        sheet.append_row(test_row)
+        st.success("✅ Test row successfully logged.")
+    except Exception as e:
+        st.error(f"❌ Manual test log failed: {e}")
