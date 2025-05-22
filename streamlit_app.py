@@ -11,11 +11,15 @@ st.set_page_config(page_title="Explain Like I'm 5", layout="wide")
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 # --- GOOGLE SHEETS AUTH ---
-creds = service_account.Credentials.from_service_account_info(
-    st.secrets["google_service_account"]
-)
-gc = gspread.authorize(creds)
-sheet = gc.open("ExplainLikeIm5-Logs").sheet1
+try:
+    creds = service_account.Credentials.from_service_account_info(
+        st.secrets["google_service_account"]
+    )
+    gc = gspread.authorize(creds)
+    sheet = gc.open("ExplainLikeIm5_Logs").sheet1
+except Exception as e:
+    sheet = None
+    st.warning(f"⚠️ Logging to Google Sheets failed: {e}")
 
 # --- STYLES ---
 st.markdown("""
@@ -25,7 +29,6 @@ st.markdown("""
             background-color: transparent;
             font-family: 'Quicksand', sans-serif;
         }
-
         .stApp {
             background-image: url("/mnt/data/2025-05-21T21-59-32.761Z.png");
             background-size: cover;
@@ -33,7 +36,6 @@ st.markdown("""
             background-position: center;
             transition: background-color 0.3s ease;
         }
-
         .header-logo {
             font-size: 6em;
             font-weight: 900;
@@ -41,7 +43,6 @@ st.markdown("""
             margin: 20px 0 10px 10px;
             transition: all 0.3s ease-in-out;
         }
-
         .explanation-box {
             background-color: rgba(0, 0, 0, 0.6);
             padding: 1em;
@@ -56,7 +57,6 @@ st.markdown("""
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
             transition: box-shadow 0.3s ease;
         }
-
         .tooltip-legend {
             display: flex;
             justify-content: space-between;
@@ -64,18 +64,15 @@ st.markdown("""
             margin-bottom: 30px;
             color: white;
         }
-
         .tooltip-legend span {
             position: relative;
             font-size: 0.95em;
             cursor: help;
             transition: color 0.3s ease;
         }
-
         .tooltip-legend span:hover {
             color: #ffd700;
         }
-
         .tooltip-legend span::after {
             content: attr(data-tooltip);
             position: absolute;
@@ -93,23 +90,19 @@ st.markdown("""
             transition: opacity 0.3s ease;
             z-index: 999;
         }
-
         .tooltip-legend span:hover::after {
             opacity: 1;
         }
-
         button[kind="primary"], .stButton > button {
             transition: all 0.3s ease-in-out;
             border: none;
             box-shadow: 0 0 0px transparent;
             font-weight: bold;
         }
-
         button[kind="primary"]:hover, .stButton > button:hover {
             box-shadow: 0 0 12px #ffb3ec, 0 0 20px #c6e2ff;
             transform: scale(1.03);
         }
-
         .typing {
             font-size: 1.2em;
             color: white;
@@ -120,12 +113,10 @@ st.markdown("""
             margin: 0 auto;
             animation: typing 1.5s steps(20, end), blink-caret 0.8s step-end infinite;
         }
-
         @keyframes typing {
             from { width: 0 }
             to { width: 100% }
         }
-
         @keyframes blink-caret {
             from, to { border-color: transparent }
             50% { border-color: white; }
@@ -139,7 +130,6 @@ st.markdown('''
     Explain Like I'm 5
 </div>
 ''', unsafe_allow_html=True)
-
 st.caption("Simplify complicated ideas into plain language for any brain level.")
 
 # --- EXPLANATION LEVEL SLIDER ---
@@ -150,7 +140,6 @@ EXPLANATION_LEVELS = {
     4: ("College", "Explain the following text to a college student. Use technical language, but keep it understandable."),
     5: ("Intern", "Explain the following text to a new intern in the field. Be professional and detailed.")
 }
-
 level = st.slider("Choose your understanding level:", 1, 5, 1, format="%d")
 
 # --- TOOLTIP LEGEND ---
@@ -172,11 +161,9 @@ EXAMPLES = [
     "What is blockchain technology?",
     "Why do planes fly?"
 ]
-
 if st.button("🎲 Load Example Text"):
     st.session_state.example = random.choice(EXAMPLES)
     st.rerun()
-
 text_input = st.text_area("Paste your complicated text here:", value=st.session_state.get("example", ""), height=200)
 
 # --- EXPLAIN FUNCTION ---
@@ -202,15 +189,14 @@ if st.button("✨ Explain it!"):
         safe_html = result.replace('\n', '<br>')
         st.markdown(f"<div class='explanation-box'>{safe_html}</div>", unsafe_allow_html=True)
 
-        # Log to Google Sheets
-        try:
-            sheet.append_row([
-                datetime.now().isoformat(),
-                EXPLANATION_LEVELS[level][0],
-                text_input,
-                result
-            ])
-        except Exception as e:
-            st.error(f"Logging to Google Sheets failed: {e}")
+        if sheet:
+            try:
+                sheet.append_row([
+                    datetime.now().isoformat(),
+                    EXPLANATION_LEVELS[level][0],
+                    text_input
+                ])
+            except Exception as e:
+                st.warning(f"⚠️ Failed to log result: {e}")
     else:
         st.warning("Paste something in first, my guy.")
