@@ -23,7 +23,7 @@ try:
         scopes=scope
     )
     gc = gspread.authorize(creds)
-    sheet = gc.open("ExplainLikeIm5_Logs").sheet1  # or use .worksheet("SheetName") if renamed
+    sheet = gc.open("ExplainLikeIm5-Logs").sheet1  # or use .worksheet("SheetName") if renamed
 except Exception as e:
     st.warning(f"⚠️ Logging to Google Sheets failed: {e}")
 
@@ -41,7 +41,7 @@ st.markdown("""
         background-repeat: no-repeat;
         background-position: center;
     }
-    .header-logo {
+    .header-o {
         font-size: 6em;
         font-weight: 900;
         color: white;
