@@ -12,13 +12,19 @@ openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 # --- GOOGLE SHEETS AUTH ---
 try:
-    scope = ["https://www.googleapis.com/auth/spreadsheets"]
+    scope = [
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive"
+    ]
+
     creds = service_account.Credentials.from_service_account_info(
         st.secrets["google_service_account"],
         scopes=scope
     )
+
     gc = gspread.authorize(creds)
     sheet = gc.open("ExplainLikeIm5_Logs").sheet1
+
 except Exception as e:
     sheet = None
     st.warning(f"⚠️ Logging to Google Sheets failed: {e}")
