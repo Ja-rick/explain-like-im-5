@@ -26,8 +26,10 @@ try:
     sheet = gc.open("ExplainLikeIm5_Logs").sheet1
 
 except Exception as e:
-    sheet = None
-    st.warning(f"⚠️ Logging to Google Sheets failed: {e}")
+    if hasattr(e, 'response') and hasattr(e.response, 'status_code'):
+        st.warning(f"⚠️ Logging may have partially failed. Status: {e.response.status_code}")
+    else:
+        st.warning(f"⚠️ Logging to Google Sheets failed: {e}")
 
 # --- STYLES ---
 st.markdown("""
