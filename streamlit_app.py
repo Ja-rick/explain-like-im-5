@@ -1,6 +1,5 @@
 import streamlit as st
-import openai
-import os
+from openai import OpenAI
 import random
 from datetime import datetime
 from google.oauth2 import service_account
@@ -8,7 +7,7 @@ import gspread
 
 # --- CONFIG ---
 st.set_page_config(page_title="Explain Like I'm 5", layout="wide")
-openai.api_key = st.secrets["OPENAI_API_KEY"]
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 # --- GOOGLE SHEETS AUTH ---
 try:
@@ -16,15 +15,12 @@ try:
         "https://www.googleapis.com/auth/spreadsheets",
         "https://www.googleapis.com/auth/drive"
     ]
-
     creds = service_account.Credentials.from_service_account_info(
         st.secrets["google_service_account"],
         scopes=scope
     )
-
     gc = gspread.authorize(creds)
     sheet = gc.open("ExplainLikeIm5_Logs").sheet1
-
 except Exception as e:
     if hasattr(e, 'response') and hasattr(e.response, 'status_code'):
         st.warning(f"⚠️ Logging may have partially failed. Status: {e.response.status_code}")
@@ -33,113 +29,109 @@ except Exception as e:
 
 # --- STYLES ---
 st.markdown("""
-    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
-    <style>
-        html, body {
-            background-color: transparent;
-            font-family: 'Quicksand', sans-serif;
-        }
-        .stApp {
-            background-image: url("/mnt/data/2025-05-21T21-59-32.761Z.png");
-            background-size: cover;
-            background-repeat: no-repeat;
-            background-position: center;
-            transition: background-color 0.3s ease;
-        }
-        .header-logo {
-            font-size: 6em;
-            font-weight: 900;
-            color: white;
-            margin: 20px 0 10px 10px;
-            transition: all 0.3s ease-in-out;
-        }
-        .explanation-box {
-            background-color: rgba(0, 0, 0, 0.6);
-            padding: 1em;
-            border-radius: 10px;
-            border: 2px solid #add8e6;
-            color: #fff;
-            font-size: 1.2em;
-            max-height: 400px;
-            overflow-y: auto;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-            transition: box-shadow 0.3s ease;
-        }
-        .tooltip-legend {
-            display: flex;
-            justify-content: space-between;
-            margin-top: -10px;
-            margin-bottom: 30px;
-            color: white;
-        }
-        .tooltip-legend span {
-            position: relative;
-            font-size: 0.95em;
-            cursor: help;
-            transition: color 0.3s ease;
-        }
-        .tooltip-legend span:hover {
-            color: #ffd700;
-        }
-        .tooltip-legend span::after {
-            content: attr(data-tooltip);
-            position: absolute;
-            bottom: 120%;
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: #0077b6;
-            color: #fff;
-            padding: 6px 10px;
-            border-radius: 6px;
-            font-size: 0.75em;
-            white-space: nowrap;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s ease;
-            z-index: 999;
-        }
-        .tooltip-legend span:hover::after {
-            opacity: 1;
-        }
-        button[kind="primary"], .stButton > button {
-            transition: all 0.3s ease-in-out;
-            border: none;
-            box-shadow: 0 0 0px transparent;
-            font-weight: bold;
-        }
-        button[kind="primary"]:hover, .stButton > button:hover {
-            box-shadow: 0 0 12px #ffb3ec, 0 0 20px #c6e2ff;
-            transform: scale(1.03);
-        }
-        .typing {
-            font-size: 1.2em;
-            color: white;
-            font-family: monospace;
-            overflow: hidden;
-            border-right: .1em solid white;
-            white-space: nowrap;
-            margin: 0 auto;
-            animation: typing 1.5s steps(20, end), blink-caret 0.8s step-end infinite;
-        }
-        @keyframes typing {
-            from { width: 0 }
-            to { width: 100% }
-        }
-        @keyframes blink-caret {
-            from, to { border-color: transparent }
-            50% { border-color: white; }
-        }
-    </style>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
+<style>
+    html, body {
+        background-color: transparent;
+        font-family: 'Quicksand', sans-serif;
+    }
+    .stApp {
+        background-image: url("/mnt/data/2025-05-21T21-59-32.761Z.png");
+        background-size: cover;
+        background-repeat: no-repeat;
+        background-position: center;
+        transition: background-color 0.3s ease;
+    }
+    .header-logo {
+        font-size: 6em;
+        font-weight: 900;
+        color: white;
+        margin: 20px 0 10px 10px;
+        transition: all 0.3s ease-in-out;
+    }
+    .explanation-box {
+        background-color: rgba(0, 0, 0, 0.6);
+        padding: 1em;
+        border-radius: 10px;
+        border: 2px solid #add8e6;
+        color: #fff;
+        font-size: 1.2em;
+        max-height: 400px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        transition: box-shadow 0.3s ease;
+    }
+    .tooltip-legend {
+        display: flex;
+        justify-content: space-between;
+        margin-top: -10px;
+        margin-bottom: 30px;
+        color: white;
+    }
+    .tooltip-legend span {
+        position: relative;
+        font-size: 0.95em;
+        cursor: help;
+        transition: color 0.3s ease;
+    }
+    .tooltip-legend span:hover {
+        color: #ffd700;
+    }
+    .tooltip-legend span::after {
+        content: attr(data-tooltip);
+        position: absolute;
+        bottom: 120%;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: #0077b6;
+        color: #fff;
+        padding: 6px 10px;
+        border-radius: 6px;
+        font-size: 0.75em;
+        white-space: nowrap;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+        z-index: 999;
+    }
+    .tooltip-legend span:hover::after {
+        opacity: 1;
+    }
+    button[kind="primary"], .stButton > button {
+        transition: all 0.3s ease-in-out;
+        border: none;
+        box-shadow: 0 0 0px transparent;
+        font-weight: bold;
+    }
+    button[kind="primary"]:hover, .stButton > button:hover {
+        box-shadow: 0 0 12px #ffb3ec, 0 0 20px #c6e2ff;
+        transform: scale(1.03);
+    }
+    .typing {
+        font-size: 1.2em;
+        color: white;
+        font-family: monospace;
+        overflow: hidden;
+        border-right: .1em solid white;
+        white-space: nowrap;
+        margin: 0 auto;
+        animation: typing 1.5s steps(20, end), blink-caret 0.8s step-end infinite;
+    }
+    @keyframes typing {
+        from { width: 0 }
+        to { width: 100% }
+    }
+    @keyframes blink-caret {
+        from, to { border-color: transparent }
+        50% { border-color: white; }
+    }
+</style>
 """, unsafe_allow_html=True)
 
 # --- HEADER ---
-st.markdown('''
-<div class="header-logo">
-    Explain Like I'm 5
-</div>
-''', unsafe_allow_html=True)
+st.markdown('<div class="header-logo">Explain Like I\'m 5</div>', unsafe_allow_html=True)
 st.caption("Simplify complicated ideas into plain language for any brain level.")
 
 # --- EXPLANATION LEVEL SLIDER ---
@@ -179,7 +171,7 @@ text_input = st.text_area("Paste your complicated text here:", value=st.session_
 # --- EXPLAIN FUNCTION ---
 def get_explanation(text, mode_prompt):
     prompt = f"{mode_prompt}\n\nText:\n'''\n{text}\n'''"
-    response = openai.ChatCompletion.create(
+    response = client.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=[
             {"role": "system", "content": "You're an expert at simplifying complex topics for different audiences."},
@@ -188,7 +180,7 @@ def get_explanation(text, mode_prompt):
         temperature=0.7,
         max_tokens=300,
     )
-    return response.choices[0].message["content"].strip()
+    return response.choices[0].message.content.strip()
 
 # --- EXPLAIN BUTTON ---
 if st.button("✨ Explain it!"):
