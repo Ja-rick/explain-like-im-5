@@ -201,9 +201,7 @@ if st.button("✨ Explain it!"):
                 sheet.append_row([
                     datetime.now().isoformat(),
                     EXPLANATION_LEVELS[level][0],
-                    text_input,
-                    session_id,
-                    f"✨ {EXPLANATION_LEVELS[level][0]} mode used"
+                    text_input     
                 ])
             except Exception as e:
                 st.warning(f"⚠️ Failed to log result: {e}")
