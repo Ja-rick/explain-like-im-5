@@ -2,12 +2,20 @@ import streamlit as st
 import openai
 import os
 import random
-import csv
 from datetime import datetime
+from google.oauth2 import service_account
+import gspread
 
 # --- CONFIG ---
-openai.api_key = os.getenv("OPENAI_API_KEY") or "sk-REPLACE_ME"
 st.set_page_config(page_title="Explain Like I'm 5", layout="wide")
+openai.api_key = st.secrets["OPENAI_API_KEY"]
+
+# --- GOOGLE SHEETS AUTH ---
+creds = service_account.Credentials.from_service_account_info(
+    st.secrets["google_service_account"]
+)
+gc = gspread.authorize(creds)
+sheet = gc.open("ExplainLikeIm5-Logs").sheet1
 
 # --- STYLES ---
 st.markdown("""
@@ -156,7 +164,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# --- EXAMPLE PROMPTS ---
+# --- EXAMPLES ---
 EXAMPLES = [
     "What is quantum computing?",
     "How does the internet work?",
@@ -171,13 +179,7 @@ if st.button("🎲 Load Example Text"):
 
 text_input = st.text_area("Paste your complicated text here:", value=st.session_state.get("example", ""), height=200)
 
-# --- LOG INTERACTIONS ---
-def log_interaction(prompt, level_label):
-    with open("usage_log.csv", mode="a", newline="") as file:
-        writer = csv.writer(file)
-        writer.writerow([datetime.now(), prompt[:50], level_label])
-
-# --- LLM CALL ---
+# --- EXPLAIN FUNCTION ---
 def get_explanation(text, mode_prompt):
     prompt = f"{mode_prompt}\n\nText:\n'''\n{text}\n'''"
     response = openai.ChatCompletion.create(
@@ -194,11 +196,17 @@ def get_explanation(text, mode_prompt):
 # --- EXPLAIN BUTTON ---
 if st.button("✨ Explain it!"):
     if text_input.strip():
-        log_interaction(text_input, EXPLANATION_LEVELS[level][0])
         st.markdown('<div class="typing">Translating brainwaves into plain English...</div>', unsafe_allow_html=True)
         result = get_explanation(text_input, EXPLANATION_LEVELS[level][1])
         st.markdown("### Simplified Explanation:")
         safe_html = result.replace('\n', '<br>')
         st.markdown(f"<div class='explanation-box'>{safe_html}</div>", unsafe_allow_html=True)
+
+        # Log to Google Sheets
+        sheet.append_row([
+            datetime.now().isoformat(),
+            EXPLANATION_LEVELS[level][0],
+            text_input
+        ])
     else:
         st.warning("Paste something in first, my guy.")
