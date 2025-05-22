@@ -12,8 +12,10 @@ openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 # --- GOOGLE SHEETS AUTH ---
 try:
+    scope = ["https://www.googleapis.com/auth/spreadsheets"]
     creds = service_account.Credentials.from_service_account_info(
-        st.secrets["google_service_account"]
+        st.secrets["google_service_account"],
+        scopes=scope
     )
     gc = gspread.authorize(creds)
     sheet = gc.open("ExplainLikeIm5_Logs").sheet1
