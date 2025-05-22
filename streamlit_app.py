@@ -8,6 +8,8 @@ import gspread
 # --- CONFIG ---
 st.set_page_config(page_title="Explain Like I'm 5", layout="wide")
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+sheet = None  # default value in case Google Sheets auth fails
+
 
 # --- GOOGLE SHEETS AUTH ---
 try:
